@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payment File Uploader</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&family=IBM+Plex+Mono&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --border: rgba(255,255,255,0.08);
+      --border2: rgba(255,255,255,0.14);
+      --text: #e8eaf0;
+      --text2: #8b90a0;
+      --text3: #555a6a;
+      --green: #1db97a;
+      --green-bg: rgba(29,185,122,0.1);
+      --amber: #f5a623;
+      --amber-bg: rgba(245,166,35,0.1);
+      --red: #e84545;
+      --red-bg: rgba(232,69,69,0.1);
+      --blue: #4e9eff;
+      --blue-bg: rgba(78,158,255,0.1);
+      --accent: #5b6cff;
+      --accent2: rgba(91,108,255,0.15);
+    }
+
+    body {
+      font-family: 'IBM Plex Sans Thai', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem;
+    }
+
+    .container { width: 100%; max-width: 680px; }
+
+    header {
+      margin-bottom: 2rem;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo {
+      width: 36px; height: 36px;
+      background: var(--accent2);
+      border: 1px solid var(--accent);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+
+    header h1 { font-size: 18px; font-weight: 600; color: var(--text); }
+    header p { font-size: 13px; color: var(--text2); margin-top: 2px; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+    }
+
+    .card-title {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text3);
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .config-grid .full { grid-column: 1 / -1; }
+
+    label {
+      display: block;
+      font-size: 12px;
+      color: var(--text2);
+      margin-bottom: 5px;
+      font-weight: 500;
+    }
+
+    input[type="text"], input[type="password"] {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border2);
+      border-radius: 8px;
+      padding: 9px 12px;
+      font-size: 13px;
+      font-family: 'IBM Plex Mono', monospace;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    input[type="text"]:focus, input[type="password"]:focus {
+      border-color: var(--accent);
+    }
+
+    .config-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--text2);
+    }
+
+    .dot-status {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--text3);
+      flex-shrink: 0;
+    }
+    .dot-status.ok { background: var(--green); box-shadow: 0 0 6px var(--green); }
+
+    .btn-save {
+      background: var(--accent2);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      border-radius: 8px;
+      padding: 8px 18px;
+      font-size: 13px;
+      font-family: 'IBM Plex Sans Thai', sans-serif;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s;
+      margin-top: 10px;
+    }
+    .btn-save:hover { background: rgba(91,108,255,0.25); }
+
+    .drop-zone {
+      border: 1.5px dashed var(--border2);
+      border-radius: 12px;
+      padding: 2.5rem 1rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.15s;
+      background: transparent;
+      position: relative;
+    }
+    .drop-zone:hover, .drop-zone.drag {
+      border-color: var(--accent);
+      background: var(--accent2);
+    }
+
+    .drop-icon { font-size: 36px; display: block; margin-bottom: 10px; }
+    .drop-zone p { font-size: 14px; color: var(--text2); }
+    .drop-hint { font-size: 12px; color: var(--text3); margin-top: 6px; }
+
+    .file-list { display: flex; flex-direction: column; gap: 8px; margin-top: 1rem; }
+
+    .file-item {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transition: border-color 0.2s;
+    }
+    .file-item.success { border-color: rgba(29,185,122,0.3); }
+    .file-item.error { border-color: rgba(232,69,69,0.3); }
+
+    .file-icon { font-size: 22px; flex-shrink: 0; }
+    .file-info { flex: 1; min-width: 0; }
+    .file-name {
+      font-size: 13px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .file-meta {
+      font-size: 12px;
+      color: var(--text2);
+      margin-top: 3px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .mini-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+    .mini-dot.wait { background: var(--text3); }
+    .mini-dot.loading { background: var(--amber); animation: pulse 0.7s infinite alternate; }
+    .mini-dot.ok { background: var(--green); }
+    .mini-dot.err { background: var(--red); }
+
+    @keyframes pulse { to { opacity: 0.2; } }
+
+    .badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 5px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .badge-dep { background: var(--green-bg); color: var(--green); }
+    .badge-wit { background: var(--amber-bg); color: var(--amber); }
+    .badge-unk { background: var(--surface2); color: var(--text3); }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-top: 1.25rem;
+      flex-wrap: wrap;
+    }
+
+    .btn-upload {
+      background: var(--accent);
+      border: none;
+      color: #fff;
+      border-radius: 9px;
+      padding: 10px 22px;
+      font-size: 14px;
+      font-family: 'IBM Plex Sans Thai', sans-serif;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-upload:disabled { opacity: 0.35; cursor: not-allowed; }
+    .btn-upload:not(:disabled):hover { opacity: 0.88; }
+    .btn-upload:not(:disabled):active { transform: scale(0.98); }
+
+    .btn-clear {
+      background: transparent;
+      border: 1px solid var(--border2);
+      color: var(--text2);
+      border-radius: 9px;
+      padding: 10px 16px;
+      font-size: 13px;
+      font-family: 'IBM Plex Sans Thai', sans-serif;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    .btn-clear:hover { border-color: var(--text2); color: var(--text); }
+
+    .summary {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.25rem;
+      margin-top: 1rem;
+      display: none;
+    }
+    .summary.show { display: block; }
+    .summary-title {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .summary-table { width: 100%; border-collapse: collapse; }
+    .summary-table td {
+      padding: 7px 0;
+      font-size: 13px;
+      border-bottom: 1px solid var(--border);
+    }
+    .summary-table tr:last-child td { border-bottom: none; }
+    .summary-table td:last-child { text-align: right; }
+    .summary-table .total td { font-weight: 600; padding-top: 12px; }
+
+    .stat-ok { color: var(--green); }
+    .stat-err { color: var(--red); }
+
+    footer {
+      margin-top: 3rem;
+      font-size: 12px;
+      color: var(--text3);
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="logo">⬆</div>
+    <div>
+      <h1>Payment File Uploader</h1>
+      <p>อัพโหลดรายการฝาก/ถอน เข้า Supabase</p>
+    </div>
+  </header>
+
+  <!-- Config -->
+  <div class="card">
+    <div class="card-title">⚙ Supabase Config</div>
+    <div class="config-grid">
+      <div class="full">
+        <label>Supabase URL</label>
+        <input type="text" id="sbUrl" placeholder="https://xxxx.supabase.co">
+      </div>
+      <div class="full">
+        <label>Anon Key</label>
+        <input type="password" id="sbKey" placeholder="eyJh...">
+      </div>
+    </div>
+    <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap">
+      <button class="btn-save" onclick="saveConfig()">บันทึก Config</button>
+      <div class="config-status">
+        <div class="dot-status" id="cfgDot"></div>
+        <span id="cfgMsg">ยังไม่ได้ตั้งค่า</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Drop zone -->
+  <div class="card" style="padding:0;overflow:hidden;border:none;background:none">
+    <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+      <span class="drop-icon">📂</span>
+      <p>คลิกหรือลากไฟล์มาวาง</p>
+      <div class="drop-hint">รองรับ .xlsx หลายไฟล์พร้อมกัน</div>
+      <div class="drop-hint" style="margin-top:4px">deposits_YYYY-MM-DD_to_YYYY-MM-DD.xlsx &nbsp;|&nbsp; withdraws_YYYY-MM-DD_to_YYYY-MM-DD.xlsx</div>
+    </div>
+    <input type="file" id="fileInput" accept=".xlsx" multiple style="display:none">
+    <div class="file-list" id="fileList"></div>
+  </div>
+
+  <!-- Actions -->
+  <div class="actions">
+    <button class="btn-upload" id="btnUpload" disabled onclick="startUpload()">
+      ⬆ อัพโหลดเข้า Supabase
+    </button>
+    <button class="btn-clear" onclick="clearAll()">ล้างทั้งหมด</button>
+  </div>
+
+  <!-- Summary -->
+  <div class="summary" id="summary">
+    <div class="summary-title">📋 สรุปผลการอัพโหลด</div>
+    <table class="summary-table">
+      <tbody id="summaryBody"></tbody>
+    </table>
+  </div>
+
+  <footer>กรองเฉพาะ สถานะ = SUCCESS ก่อน insert เข้า Supabase</footer>
+</div>
+
+<script>
+  const COL_DEP = {
+    'ชื่อผู้ใช้':'username','ชื่อบัญชี':'account_name','เลขบัญชี':'account_no',
+    'ชื่อธนาคาร':'bank_name','ช่องทางธนาคาร':'bank_channel','จำนวนเงิน':'amount',
+    'จำนวน QR':'qr_amount','จำนวนเงินโอนสำเร็จ':'transfer_amount','MDR':'mdr',
+    'ค่าธรรมเนียม':'fee','ภาษี':'tax','ค่าธรรมเนียมภาษี':'fee_tax',
+    'จำนวนเงินสุทธิ':'net_amount','สถานะ':'status',
+    'วันที่สร้าง':'source_created_at','วันที่อัพเดท':'source_updated_at'
+  };
+  const COL_WIT = {
+    'ชื่อผู้ใช้':'username','ชื่อบัญชี':'account_name','เลขบัญชี':'account_no',
+    'ธนาคาร':'bank_name','ช่องทางธนาคาร':'bank_channel','จำนวนเงิน':'amount',
+    'จำนวนบิล':'bill_count','ค่าธรรมเนียม':'fee','ภาษี':'tax',
+    'ค่าธรรมเนียมภาษี':'fee_tax','จำนวนเงินสุทธิ':'net_amount','สถานะ':'status',
+    'วันที่สร้าง':'source_created_at','วันที่อัพเดท':'source_updated_at'
+  };
+
+  let files = [];
+  let sbUrl = '', sbKey = '';
+
+  function saveConfig() {
+    sbUrl = document.getElementById('sbUrl').value.trim().replace(/\/$/, '');
+    sbKey = document.getElementById('sbKey').value.trim();
+    const dot = document.getElementById('cfgDot');
+    const msg = document.getElementById('cfgMsg');
+    if (!sbUrl || !sbKey) {
+      dot.className = 'dot-status';
+      msg.textContent = 'กรุณากรอกให้ครบ';
+      return;
+    }
+    dot.className = 'dot-status ok';
+    msg.textContent = 'พร้อมใช้งาน';
+    updateBtn();
+  }
+
+  function parseFileInfo(name) {
+    const lower = name.toLowerCase();
+    let type = 'unknown';
+    if (lower.startsWith('deposits')) type = 'deposit';
+    else if (lower.startsWith('withdraws')) type = 'withdrawal';
+    const m = name.match(/(\d{4}-\d{2}-\d{2})/);
+    return { type, date: m ? m[1] : null };
+  }
+
+  function updateBtn() {
+    document.getElementById('btnUpload').disabled = !(files.length > 0 && sbUrl && sbKey);
+  }
+
+  function renderFiles() {
+    const list = document.getElementById('fileList');
+    list.innerHTML = '';
+    files.forEach((f, i) => {
+      const info = parseFileInfo(f.file.name);
+      const badgeCls = info.type === 'deposit' ? 'badge-dep' : info.type === 'withdrawal' ? 'badge-wit' : 'badge-unk';
+      const badgeLabel = info.type === 'deposit' ? 'ฝาก' : info.type === 'withdrawal' ? 'ถอน' : '?';
+      const dateLabel = info.date || 'ไม่พบวันที่';
+      const el = document.createElement('div');
+      el.className = 'file-item';
+      el.id = 'fi-' + i;
+      el.innerHTML = `
+        <div class="file-icon">📄</div>
+        <div class="file-info">
+          <div class="file-name">${f.file.name}</div>
+          <div class="file-meta">
+            <div class="mini-dot wait" id="dot-${i}"></div>
+            <span id="st-${i}">${dateLabel} · รอ</span>
+          </div>
+        </div>
+        <span class="badge ${badgeCls}">${badgeLabel}</span>
+      `;
+      list.appendChild(el);
+    });
+    updateBtn();
+  }
+
+  function setStatus(i, state, msg) {
+    const dot = document.getElementById('dot-' + i);
+    const st = document.getElementById('st-' + i);
+    const item = document.getElementById('fi-' + i);
+    if (!dot || !st) return;
+    dot.className = 'mini-dot ' + state;
+    st.textContent = msg;
+    if (state === 'ok') { item.classList.add('success'); st.style.color = 'var(--green)'; }
+    else if (state === 'err') { item.classList.add('error'); st.style.color = 'var(--red)'; }
+    else { st.style.color = 'var(--text2)'; }
+  }
+
+  document.getElementById('fileInput').addEventListener('change', e => {
+    Array.from(e.target.files).forEach(f => files.push({ file: f }));
+    renderFiles();
+    e.target.value = '';
+  });
+
+  const dz = document.getElementById('dropZone');
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('drag'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.classList.remove('drag');
+    Array.from(e.dataTransfer.files).filter(f => f.name.endsWith('.xlsx')).forEach(f => files.push({ file: f }));
+    renderFiles();
+  });
+
+  function clearAll() {
+    files = [];
+    document.getElementById('fileList').innerHTML = '';
+    document.getElementById('summary').classList.remove('show');
+    updateBtn();
+  }
+
+  async function parseXlsx(file, type) {
+    return new Promise((res, rej) => {
+      const reader = new FileReader();
+      reader.onload = e => {
+        try {
+          const wb = XLSX.read(e.target.result, { type: 'array' });
+          const ws = wb.Sheets[wb.SheetNames[0]];
+          const rows = XLSX.utils.sheet_to_json(ws, { defval: null });
+          const colMap = type === 'deposit' ? COL_DEP : COL_WIT;
+          const mapped = rows.map(row => {
+            const obj = {};
+            for (const [th, en] of Object.entries(colMap)) {
+              obj[en] = row[th] !== undefined ? row[th] : null;
+            }
+            return obj;
+          });
+          res(mapped.filter(r => String(r.status || '').trim().toUpperCase() === 'SUCCESS'));
+        } catch(err) { rej(err); }
+      };
+      reader.onerror = rej;
+      reader.readAsArrayBuffer(file);
+    });
+  }
+
+  async function insertToSupabase(table, rows) {
+    const CHUNK = 500;
+    for (let i = 0; i < rows.length; i += CHUNK) {
+      const res = await fetch(`${sbUrl}/rest/v1/${table}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': sbKey,
+          'Authorization': 'Bearer ' + sbKey,
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify(rows.slice(i, i + CHUNK))
+      });
+      if (!res.ok) throw new Error(await res.text());
+    }
+  }
+
+  async function startUpload() {
+    if (!sbUrl || !sbKey) return;
+    document.getElementById('btnUpload').disabled = true;
+    document.getElementById('summary').classList.remove('show');
+    const results = [];
+
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i];
+      const info = parseFileInfo(f.file.name);
+      if (info.type === 'unknown') {
+        setStatus(i, 'err', 'ชื่อไฟล์ไม่ถูกต้อง ต้องขึ้นต้นด้วย deposits_ หรือ withdraws_');
+        results.push({ name: f.file.name, ok: false, msg: 'ชื่อไฟล์ไม่ถูกต้อง' });
+        continue;
+      }
+      setStatus(i, 'loading', 'กำลัง parse ไฟล์...');
+      try {
+        const rows = await parseXlsx(f.file, info.type);
+        if (rows.length === 0) {
+          setStatus(i, 'ok', (info.date || '') + ' · ไม่มีรายการ SUCCESS');
+          results.push({ name: f.file.name, ok: true, count: 0, date: info.date, type: info.type });
+          continue;
+        }
+        const withMeta = rows.map(r => ({ ...r, file_date: info.date }));
+        setStatus(i, 'loading', `กำลังส่ง ${rows.length.toLocaleString()} รายการ...`);
+        const table = info.type === 'deposit' ? 'deposits' : 'withdrawals';
+        await insertToSupabase(table, withMeta);
+        const label = info.type === 'deposit' ? 'ฝาก' : 'ถอน';
+        setStatus(i, 'ok', `${info.date} ${label} · สำเร็จ ${rows.length.toLocaleString()} รายการ`);
+        results.push({ name: f.file.name, ok: true, count: rows.length, date: info.date, type: info.type });
+      } catch(err) {
+        setStatus(i, 'err', 'Error: ' + err.message.slice(0, 80));
+        results.push({ name: f.file.name, ok: false, msg: err.message });
+      }
+    }
+
+    const totalRows = results.filter(r => r.ok).reduce((a, r) => a + (r.count || 0), 0);
+    const totalFail = results.filter(r => !r.ok).length;
+    const tbody = document.getElementById('summaryBody');
+    tbody.innerHTML = results.map(r => `
+      <tr>
+        <td style="color:var(--text2); max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">${r.name}</td>
+        <td class="${r.ok ? 'stat-ok' : 'stat-err'}">${r.ok ? (r.count || 0).toLocaleString() + ' รายการ' : 'ผิดพลาด'}</td>
+      </tr>
+    `).join('') + `
+      <tr class="total">
+        <td>รวมทั้งหมด</td>
+        <td class="${totalFail > 0 ? 'stat-err' : 'stat-ok'}">${totalRows.toLocaleString()} รายการ${totalFail > 0 ? ` · ${totalFail} ไฟล์ผิดพลาด` : ' · ทุกไฟล์สำเร็จ ✓'}</td>
+      </tr>
+    `;
+    document.getElementById('summary').classList.add('show');
+    document.getElementById('btnUpload').disabled = false;
+  }
+</script>
+</body>
+</html>
