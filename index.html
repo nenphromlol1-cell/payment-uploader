@@ -501,7 +501,7 @@
           'Content-Type': 'application/json',
           'apikey': sbKey,
           'Authorization': 'Bearer ' + sbKey,
-          'Prefer': 'return=minimal'
+          'Prefer': 'resolution=ignore-duplicates,return=minimal'
         },
         body: JSON.stringify(rows.slice(i, i + CHUNK))
       });
