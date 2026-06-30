@@ -201,6 +201,34 @@
     }
   }
 
+  function extractDateOnly(val) {
+    if (val === null || val === undefined || val === '') return null;
+    let d;
+    if (val instanceof Date) {
+      d = val;
+    } else if (typeof val === 'number') {
+      // Excel serial date number
+      d = XLSX.SSF ? new Date(Date.UTC(1899, 11, 30) + val * 86400000) : new Date(val);
+    } else {
+      const s = String(val).trim();
+      // already YYYY-MM-DD or starts with it
+      const m1 = s.match(/^(\d{4}-\d{2}-\d{2})/);
+      if (m1) return m1[1];
+      // DD/MM/YYYY or D/M/YYYY (common Thai export format)
+      const m2 = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+      if (m2) {
+        const [, dd, mm, yyyy] = m2;
+        return `${yyyy}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`;
+      }
+      d = new Date(s);
+    }
+    if (!d || isNaN(d.getTime())) return null;
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
   function parseFileInfo(name) {
     const lower = name.toLowerCase();
     let type = 'unknown';
@@ -335,7 +363,7 @@
           results.push({ name: f.file.name, ok: true, count: 0, date: info.date, type: info.type });
           continue;
         }
-        const withMeta = rows.map(r => ({ ...r, file_date: info.date }));
+        const withMeta = rows.map(r => ({ ...r, file_date: extractDateOnly(r.source_created_at) || info.date }));
         setStatus(i, 'loading', `กำลังส่ง ${rows.length.toLocaleString()} รายการ...`);
         const table = info.type === 'deposit' ? 'deposits' : 'withdrawals';
         await insertToSupabase(table, withMeta);
